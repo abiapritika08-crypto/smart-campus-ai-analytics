@@ -1,0 +1,6 @@
+{
+  "name": "CampusCare AI – Student Analytics & Success Platform",
+  "description": "AI-powered faculty dashboard for student academic risk analysis, intelligent intervention suggestions, student segmentation, and placement readiness.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
