@@ -13,14 +13,14 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
   onClose,
   students,
 }) => {
-  if (!isOpen) return null;
-
   const [loading, setLoading] = useState<boolean>(true);
   const [report, setReport] = useState<any>(null);
 
   useEffect(() => {
-    fetchReport();
-  }, []);
+    if (isOpen) {
+      fetchReport();
+    }
+  }, [isOpen]);
 
   const fetchReport = async () => {
     setLoading(true);
@@ -85,6 +85,8 @@ ${report.strategicRecommendations?.map((r: string, i: number) => `• ${r}`).joi
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">

@@ -36,8 +36,6 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   onAddIntervention,
   onAddMentorNote,
 }) => {
-  if (!student) return null;
-
   const [activeTab, setActiveTab] = useState<'ai_dossier' | 'courses' | 'attendance' | 'assignments' | 'placement' | 'interventions' | 'email'>('ai_dossier');
   
   // AI Diagnostic Dossier State
@@ -64,9 +62,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
   // Trigger AI analysis on open
   useEffect(() => {
+    if (!student) return;
     fetchAiDossier();
     fetchEmailDraft();
-  }, [student.id]);
+  }, [student?.id]);
 
   const fetchAiDossier = async () => {
     setDossierLoading(true);
@@ -120,7 +119,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
   const handleCreateIntervention = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    if (!student || !newTitle.trim()) return;
 
     onAddIntervention(student.id, {
       facultyName: student.advisor || 'Dr. Eleanor Vance',
@@ -139,7 +138,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
   const handleCreateNote = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newNoteContent.trim()) return;
+    if (!student || !newNoteContent.trim()) return;
 
     onAddMentorNote(student.id, {
       author: 'Dr. Eleanor Vance',
@@ -149,6 +148,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
     setNewNoteContent('');
   };
+
+  if (!student) return null;
 
   const isDebarredRisk = student.overallAttendance < 75;
 

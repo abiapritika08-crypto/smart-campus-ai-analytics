@@ -13,8 +13,6 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
   onClose,
   onAddStudent,
 }) => {
-  if (!isOpen) return null;
-
   const [name, setName] = useState('');
   const [rollNo, setRollNo] = useState('');
   const [email, setEmail] = useState('');
@@ -125,6 +123,8 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
     onAddStudent(newStudent);
     onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">

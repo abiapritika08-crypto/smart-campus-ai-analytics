@@ -41,13 +41,28 @@ export default function App() {
     }
   }, [students]);
 
-  // UI state
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isAddStudentOpen, setIsAddStudentOpen] = useState<boolean>(false);
   const [isExportReportOpen, setIsExportReportOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Dark / Light Theme state (default dark command center)
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('campuscare_theme');
+      return saved !== null ? saved === 'dark' : true;
+    } catch (e) {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('campuscare_theme', isDarkMode ? 'dark' : 'light');
+    } catch (e) {}
+  }, [isDarkMode]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -158,7 +173,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-800 flex flex-col font-sans">
+    <div className={`min-h-screen ${
+      isDarkMode ? 'bg-mesh-dark text-slate-100' : 'bg-mesh-light text-slate-800'
+    } flex flex-col font-sans transition-colors duration-200`}>
       
       {/* Platform Header */}
       <Header
@@ -168,6 +185,8 @@ export default function App() {
         onOpenExportReport={() => setIsExportReportOpen(true)}
         onOpenCopilot={() => setActiveTab('copilot')}
         onResetData={handleResetData}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={() => setIsDarkMode(prev => !prev)}
         totalStudents={students.length}
         highRiskCount={highRiskCount}
       />
@@ -178,6 +197,7 @@ export default function App() {
         onTabChange={setActiveTab}
         highRiskCount={highRiskCount}
         activeInterventionsCount={activeInterventionsCount}
+        isDarkMode={isDarkMode}
       />
 
       {/* Main Content Container */}
@@ -195,6 +215,7 @@ export default function App() {
           onSelectAttendanceFilter={(filter) => {
             setActiveTab('roster');
           }}
+          isDarkMode={isDarkMode}
         />
 
         {/* View Routing */}
@@ -204,7 +225,10 @@ export default function App() {
             onSelectStudent={setSelectedStudent}
             onNavigateToRisk={() => setActiveTab('risk')}
             onNavigateToInterventions={() => setActiveTab('interventions')}
+            onNavigateToPlacement={() => setActiveTab('placement')}
+            onNavigateToCopilot={() => setActiveTab('copilot')}
             onQuickAction={(action, student) => setSelectedStudent(student)}
+            isDarkMode={isDarkMode}
           />
         )}
 
@@ -268,38 +292,46 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
+      <footer className={`border-t py-4 text-center text-xs transition-colors ${
+        isDarkMode ? 'border-slate-800/80 bg-slate-950/80 text-slate-400' : 'border-slate-200 bg-white/80 text-slate-500'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>
             CampusCare AI &middot; Institutional Academic Success & Early Warning System
           </p>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] opacity-80">
             Compliant with University Statutory Attendance Regulations &middot; Fall 2026 Term
           </p>
         </div>
       </footer>
 
       {/* Deep-Dive Student Profile Modal */}
-      <StudentProfileModal
-        student={selectedStudent}
-        onClose={() => setSelectedStudent(null)}
-        onAddIntervention={handleAddIntervention}
-        onAddMentorNote={handleAddMentorNote}
-      />
+      {selectedStudent && (
+        <StudentProfileModal
+          student={selectedStudent}
+          onClose={() => setSelectedStudent(null)}
+          onAddIntervention={handleAddIntervention}
+          onAddMentorNote={handleAddMentorNote}
+        />
+      )}
 
       {/* Add Student Modal */}
-      <AddStudentModal
-        isOpen={isAddStudentOpen}
-        onClose={() => setIsAddStudentOpen(false)}
-        onAddStudent={handleAddStudent}
-      />
+      {isAddStudentOpen && (
+        <AddStudentModal
+          isOpen={isAddStudentOpen}
+          onClose={() => setIsAddStudentOpen(false)}
+          onAddStudent={handleAddStudent}
+        />
+      )}
 
       {/* Export Report Modal */}
-      <ExportReportModal
-        isOpen={isExportReportOpen}
-        onClose={() => setIsExportReportOpen(false)}
-        students={students}
-      />
+      {isExportReportOpen && (
+        <ExportReportModal
+          isOpen={isExportReportOpen}
+          onClose={() => setIsExportReportOpen(false)}
+          students={students}
+        />
+      )}
 
       {/* Toast Notification Notification */}
       {toastMessage && (
