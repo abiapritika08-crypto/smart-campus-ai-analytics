@@ -271,7 +271,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               }`}
             >
               <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-              <span>Course Performance ({student.coursePerformances.length})</span>
+              <span>Course Performance ({(student.coursePerformances || []).length})</span>
             </button>
 
             <button
@@ -295,7 +295,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               }`}
             >
               <FileText className="w-3.5 h-3.5 text-slate-400" />
-              <span>Assignments & Backlogs ({student.assignments.length})</span>
+              <span>Assignments & Backlogs ({(student.assignments || []).length})</span>
             </button>
 
             <button
@@ -319,7 +319,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               }`}
             >
               <HeartHandshake className="w-3.5 h-3.5 text-slate-400" />
-              <span>Action Plan & Logs ({student.interventions.length})</span>
+              <span>Action Plan & Logs ({(student.interventions || []).length})</span>
             </button>
 
             <button

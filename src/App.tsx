@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { INITIAL_STUDENTS } from './data/mockStudents';
 import { Student, InterventionRecord, MentorNote, InterventionStatus, SegmentType } from './types/student';
+import { Sidebar, SidebarTab } from './components/Sidebar';
 import { Header } from './components/Header';
-import { MetricCards } from './components/MetricCards';
-import { NavigationTabs, ActiveTab } from './components/NavigationTabs';
 import { DashboardView } from './components/DashboardView';
 import { RosterView } from './components/RosterView';
 import { RiskAnalysisView } from './components/RiskAnalysisView';
@@ -11,20 +10,81 @@ import { SegmentationView } from './components/SegmentationView';
 import { PlacementHubView } from './components/PlacementHubView';
 import { InterventionsView } from './components/InterventionsView';
 import { CopilotView } from './components/CopilotView';
+import { ReportsView } from './components/ReportsView';
+import { SettingsView } from './components/SettingsView';
 import { StudentProfileModal } from './components/StudentProfileModal';
 import { AddStudentModal } from './components/AddStudentModal';
 import { ExportReportModal } from './components/ExportReportModal';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, RefreshCw } from 'lucide-react';
 
-const STORAGE_KEY = 'campuscare_students_data_v1';
+const STORAGE_KEY = 'campuscare_students_data_v3';
+
+// Bulletproof sanitizer to guarantee no undefined/null properties crash the app
+function sanitizeStudent(s: any, fallbackIdx = 0): Student {
+  const fallback = INITIAL_STUDENTS[fallbackIdx % INITIAL_STUDENTS.length] || INITIAL_STUDENTS[0];
+  if (!s || typeof s !== 'object') return fallback;
+
+  return {
+    id: s.id || `stu-${Date.now()}-${fallbackIdx}`,
+    rollNo: s.rollNo || fallback.rollNo,
+    name: s.name || fallback.name,
+    email: s.email || fallback.email,
+    avatar: s.avatar || fallback.avatar,
+    department: s.department || fallback.department,
+    semester: typeof s.semester === 'number' ? s.semester : fallback.semester,
+    section: s.section || fallback.section,
+    batch: s.batch || fallback.batch,
+    advisor: s.advisor || fallback.advisor,
+    cgpa: typeof s.cgpa === 'number' ? s.cgpa : fallback.cgpa,
+    currentGpa: typeof s.currentGpa === 'number' ? s.currentGpa : fallback.currentGpa,
+    creditsCompleted: typeof s.creditsCompleted === 'number' ? s.creditsCompleted : fallback.creditsCompleted,
+    totalCredits: typeof s.totalCredits === 'number' ? s.totalCredits : fallback.totalCredits,
+    overallAttendance: typeof s.overallAttendance === 'number' ? s.overallAttendance : fallback.overallAttendance,
+    attendanceHistory: Array.isArray(s.attendanceHistory) && s.attendanceHistory.length > 0 ? s.attendanceHistory : fallback.attendanceHistory,
+    coursePerformances: Array.isArray(s.coursePerformances) && s.coursePerformances.length > 0 ? s.coursePerformances : fallback.coursePerformances,
+    assignments: Array.isArray(s.assignments) ? s.assignments : fallback.assignments,
+    riskAnalysis: {
+      overallRiskScore: typeof s.riskAnalysis?.overallRiskScore === 'number' ? s.riskAnalysis.overallRiskScore : fallback.riskAnalysis.overallRiskScore,
+      riskTier: s.riskAnalysis?.riskTier || fallback.riskAnalysis.riskTier,
+      primaryFactors: Array.isArray(s.riskAnalysis?.primaryFactors) ? s.riskAnalysis.primaryFactors : fallback.riskAnalysis.primaryFactors,
+      attendanceRisk: s.riskAnalysis?.attendanceRisk || fallback.riskAnalysis.attendanceRisk,
+      academicTrend: s.riskAnalysis?.academicTrend || fallback.riskAnalysis.academicTrend,
+      scoreDropPercent: typeof s.riskAnalysis?.scoreDropPercent === 'number' ? s.riskAnalysis.scoreDropPercent : fallback.riskAnalysis.scoreDropPercent,
+      assignmentCompletionRate: typeof s.riskAnalysis?.assignmentCompletionRate === 'number' ? s.riskAnalysis.assignmentCompletionRate : fallback.riskAnalysis.assignmentCompletionRate,
+      consecutiveAbsences: typeof s.riskAnalysis?.consecutiveAbsences === 'number' ? s.riskAnalysis.consecutiveAbsences : fallback.riskAnalysis.consecutiveAbsences,
+    },
+    segmentation: {
+      primarySegment: s.segmentation?.primarySegment || fallback.segmentation.primarySegment,
+      secondaryTags: Array.isArray(s.segmentation?.secondaryTags) ? s.segmentation.secondaryTags : fallback.segmentation.secondaryTags,
+    },
+    placementReadiness: {
+      overallScore: typeof s.placementReadiness?.overallScore === 'number' ? s.placementReadiness.overallScore : fallback.placementReadiness.overallScore,
+      tier: s.placementReadiness?.tier || fallback.placementReadiness.tier,
+      technicalProficiency: typeof s.placementReadiness?.technicalProficiency === 'number' ? s.placementReadiness.technicalProficiency : fallback.placementReadiness.technicalProficiency,
+      mockInterviewScore: typeof s.placementReadiness?.mockInterviewScore === 'number' ? s.placementReadiness.mockInterviewScore : fallback.placementReadiness.mockInterviewScore,
+      codingSkillScore: typeof s.placementReadiness?.codingSkillScore === 'number' ? s.placementReadiness.codingSkillScore : fallback.placementReadiness.codingSkillScore,
+      softSkillsScore: typeof s.placementReadiness?.softSkillsScore === 'number' ? s.placementReadiness.softSkillsScore : fallback.placementReadiness.softSkillsScore,
+      resumeStatus: s.placementReadiness?.resumeStatus || fallback.placementReadiness.resumeStatus,
+      internshipsCount: typeof s.placementReadiness?.internshipsCount === 'number' ? s.placementReadiness.internshipsCount : fallback.placementReadiness.internshipsCount,
+      activeBacklogs: typeof s.placementReadiness?.activeBacklogs === 'number' ? s.placementReadiness.activeBacklogs : fallback.placementReadiness.activeBacklogs,
+      strengths: Array.isArray(s.placementReadiness?.strengths) ? s.placementReadiness.strengths : fallback.placementReadiness.strengths,
+      growthAreas: Array.isArray(s.placementReadiness?.growthAreas) ? s.placementReadiness.growthAreas : fallback.placementReadiness.growthAreas,
+    },
+    interventions: Array.isArray(s.interventions) ? s.interventions : [],
+    mentorNotes: Array.isArray(s.mentorNotes) ? s.mentorNotes : [],
+  };
+}
 
 export default function App() {
-  // Students state with localStorage hydration
+  // Students state with resilient localStorage hydration
   const [students, setStudents] = useState<Student[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('campuscare_students_data_v2');
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((s, idx) => sanitizeStudent(s, idx));
+        }
       }
     } catch (e) {
       console.error('Failed to load students from localStorage:', e);
@@ -41,28 +101,18 @@ export default function App() {
     }
   }, [students]);
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  // Sidebar navigation and layout states
+  const [currentTab, setCurrentTab] = useState<SidebarTab>('overview');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+
+  // Search & Modals state
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isAddStudentOpen, setIsAddStudentOpen] = useState<boolean>(false);
   const [isExportReportOpen, setIsExportReportOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // Dark / Light Theme state (default dark command center)
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('campuscare_theme');
-      return saved !== null ? saved === 'dark' : true;
-    } catch (e) {
-      return true;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('campuscare_theme', isDarkMode ? 'dark' : 'light');
-    } catch (e) {}
-  }, [isDarkMode]);
+  const [showResetConfirmModal, setShowResetConfirmModal] = useState<boolean>(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -70,9 +120,9 @@ export default function App() {
   };
 
   // Metrics calculations
-  const highRiskCount = students.filter(s => s.riskAnalysis.riskTier === 'high').length;
+  const highRiskCount = students.filter(s => s.riskAnalysis?.riskTier === 'high').length;
   const activeInterventionsCount = students.reduce(
-    (acc, s) => acc + s.interventions.filter(i => i.status === 'in_progress' || i.status === 'scheduled').length,
+    (acc, s) => acc + (s.interventions || []).filter(i => i.status === 'in_progress' || i.status === 'scheduled').length,
     0
   );
 
@@ -87,11 +137,10 @@ export default function App() {
       };
       return {
         ...s,
-        interventions: [created, ...s.interventions],
+        interventions: [created, ...(s.interventions || [])],
       };
     }));
     
-    // Also update selected student if open
     setSelectedStudent(prev => {
       if (!prev || prev.id !== studentId) return prev;
       const created: InterventionRecord = {
@@ -101,7 +150,7 @@ export default function App() {
       };
       return {
         ...prev,
-        interventions: [created, ...prev.interventions],
+        interventions: [created, ...(prev.interventions || [])],
       };
     });
 
@@ -119,7 +168,7 @@ export default function App() {
       if (s.id !== studentId) return s;
       return {
         ...s,
-        mentorNotes: [noteRecord, ...s.mentorNotes],
+        mentorNotes: [noteRecord, ...(s.mentorNotes || [])],
       };
     }));
 
@@ -127,7 +176,7 @@ export default function App() {
       if (!prev || prev.id !== studentId) return prev;
       return {
         ...prev,
-        mentorNotes: [noteRecord, ...prev.mentorNotes],
+        mentorNotes: [noteRecord, ...(prev.mentorNotes || [])],
       };
     });
 
@@ -139,30 +188,34 @@ export default function App() {
       if (s.id !== studentId) return s;
       return {
         ...s,
-        interventions: s.interventions.map(i => i.id === interventionId ? { ...i, status } : i),
+        interventions: (s.interventions || []).map(i => i.id === interventionId ? { ...i, status } : i),
       };
     }));
     showToast(`Intervention status updated to ${status.toUpperCase()}.`);
   };
 
   const handleAddStudent = (newStudent: Student) => {
-    setStudents(prev => [newStudent, ...prev]);
-    showToast(`Enrolled ${newStudent.name} into cohort.`);
+    const safeStudent = sanitizeStudent(newStudent);
+    setStudents(prev => [safeStudent, ...prev]);
+    showToast(`Enrolled ${safeStudent.name} into cohort.`);
   };
 
-  const handleResetData = () => {
-    if (window.confirm('Reset all student data to the default university benchmark cohort?')) {
-      setStudents(INITIAL_STUDENTS);
+  const handleResetDataConfirmed = () => {
+    setStudents(INITIAL_STUDENTS);
+    try {
       localStorage.removeItem(STORAGE_KEY);
-      showToast('Cohort data reset to initial benchmark records.');
-    }
+      localStorage.removeItem('campuscare_students_data_v2');
+      localStorage.removeItem('campuscare_students_data_v1');
+    } catch (e) {}
+    setShowResetConfirmModal(false);
+    showToast('Cohort data reset to initial benchmark records.');
   };
 
   const handleBatchAction = (actionType: string, selectedIds: string[]) => {
     if (actionType === 'remedial_session') {
       showToast(`Group remedial session scheduled for ${selectedIds.length} students.`);
     } else if (actionType === 'attendance_warning') {
-      showToast(`Statutory attendance warning letters queued for ${selectedIds.length} students.`);
+      showToast(`Statutory attendance warning notices queued for ${selectedIds.length} students.`);
     } else if (actionType === 'export_selected') {
       showToast(`Exported roster data for ${selectedIds.length} selected students.`);
     }
@@ -172,138 +225,173 @@ export default function App() {
     showToast(`Batch intervention plan initiated for ${segmentStudents.length} students in "${segment.replace('_', ' ')}".`);
   };
 
-  return (
-    <div className={`min-h-screen ${
-      isDarkMode ? 'bg-mesh-dark text-slate-100' : 'bg-mesh-light text-slate-800'
-    } flex flex-col font-sans transition-colors duration-200`}>
-      
-      {/* Platform Header */}
-      <Header
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onOpenAddStudent={() => setIsAddStudentOpen(true)}
-        onOpenExportReport={() => setIsExportReportOpen(true)}
-        onOpenCopilot={() => setActiveTab('copilot')}
-        onResetData={handleResetData}
-        isDarkMode={isDarkMode}
-        onToggleDarkMode={() => setIsDarkMode(prev => !prev)}
-        totalStudents={students.length}
-        highRiskCount={highRiskCount}
-      />
+  // Compute Page Title and Breadcrumbs based on active tab
+  const getPageMeta = () => {
+    switch (currentTab) {
+      case 'overview':
+        return { title: 'Student Success Overview', breadcrumbs: ['CampusCare AI', 'Dashboard', 'Overview'] };
+      case 'roster':
+        return { title: 'Student Directory', breadcrumbs: ['CampusCare AI', 'Academics', 'Directory'] };
+      case 'risk':
+        return { title: 'Risk Early Warning System', breadcrumbs: ['CampusCare AI', 'Analytics', 'Early Warning'] };
+      case 'interventions':
+        return { title: 'Interventions & Action Plans', breadcrumbs: ['CampusCare AI', 'Remediation', 'Interventions'] };
+      case 'segmentation':
+        return { title: 'Cohort Segmentation', breadcrumbs: ['CampusCare AI', 'Clustering', 'Segments'] };
+      case 'placement':
+        return { title: 'Placement Readiness Hub', breadcrumbs: ['CampusCare AI', 'Corporate Relations', 'Placement'] };
+      case 'reports':
+        return { title: 'Academic Reports & Exports', breadcrumbs: ['CampusCare AI', 'Compliance', 'Reports'] };
+      case 'settings':
+        return { title: 'Institutional Settings & Policies', breadcrumbs: ['CampusCare AI', 'System', 'Settings'] };
+      case 'copilot':
+        return { title: 'Faculty AI Copilot', breadcrumbs: ['CampusCare AI', 'Assistance', 'Copilot'] };
+      default:
+        return { title: 'Dashboard', breadcrumbs: ['CampusCare AI', 'Dashboard'] };
+    }
+  };
 
-      {/* Navigation Sub-header Bar */}
-      <NavigationTabs
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
+  const pageMeta = getPageMeta();
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans flex relative selection:bg-blue-600/20 selection:text-blue-900">
+      
+      {/* 1. Fixed, Collapsible Deep Navy Sidebar (Left) */}
+      <Sidebar
+        currentTab={currentTab}
+        onSelectTab={setCurrentTab}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
         highRiskCount={highRiskCount}
         activeInterventionsCount={activeInterventionsCount}
-        isDarkMode={isDarkMode}
       />
 
-      {/* Main Content Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* 2. Main Content Area (Offset by sidebar width on desktop) */}
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
+        isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
+      }`}>
         
-        {/* KPI Strip (visible across all views) */}
-        <MetricCards
+        {/* Top Navigation Bar */}
+        <Header
+          pageTitle={pageMeta.title}
+          breadcrumbs={pageMeta.breadcrumbs}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onSelectStudent={setSelectedStudent}
           students={students}
-          onSelectRiskFilter={(tier) => {
-            setActiveTab('risk');
-          }}
-          onSelectPlacementFilter={(tier) => {
-            setActiveTab('placement');
-          }}
-          onSelectAttendanceFilter={(filter) => {
-            setActiveTab('roster');
-          }}
-          isDarkMode={isDarkMode}
+          onOpenCopilot={() => setCurrentTab('copilot')}
+          onOpenAddStudent={() => setIsAddStudentOpen(true)}
+          onOpenExportReport={() => setIsExportReportOpen(true)}
+          onOpenSettings={() => setCurrentTab('settings')}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen(true)}
+          highRiskCount={highRiskCount}
         />
 
-        {/* View Routing */}
-        {activeTab === 'dashboard' && (
-          <DashboardView
-            students={students}
-            onSelectStudent={setSelectedStudent}
-            onNavigateToRisk={() => setActiveTab('risk')}
-            onNavigateToInterventions={() => setActiveTab('interventions')}
-            onNavigateToPlacement={() => setActiveTab('placement')}
-            onNavigateToCopilot={() => setActiveTab('copilot')}
-            onQuickAction={(action, student) => setSelectedStudent(student)}
-            isDarkMode={isDarkMode}
-          />
-        )}
+        {/* Main Workspace Body */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          
+          {/* Active View Routing */}
+          {currentTab === 'overview' && (
+            <DashboardView
+              students={students}
+              onSelectStudent={setSelectedStudent}
+              onNavigateToRisk={() => setCurrentTab('risk')}
+              onNavigateToInterventions={() => setCurrentTab('interventions')}
+              onNavigateToPlacement={() => setCurrentTab('placement')}
+              onNavigateToRoster={() => setCurrentTab('roster')}
+              onNavigateToCopilot={() => setCurrentTab('copilot')}
+              onOpenInterventionWithStudent={(student) => setSelectedStudent(student)}
+            />
+          )}
 
-        {activeTab === 'roster' && (
-          <RosterView
-            students={students}
-            onSelectStudent={setSelectedStudent}
-            onOpenEmailModal={(student) => {
-              setSelectedStudent(student);
-            }}
-            onOpenInterventionModal={(student) => {
-              setSelectedStudent(student);
-            }}
-            onBatchAction={handleBatchAction}
-          />
-        )}
+          {currentTab === 'roster' && (
+            <RosterView
+              students={students}
+              onSelectStudent={setSelectedStudent}
+              onOpenEmailModal={(student) => setSelectedStudent(student)}
+              onOpenInterventionModal={(student) => setSelectedStudent(student)}
+              onBatchAction={handleBatchAction}
+            />
+          )}
 
-        {activeTab === 'risk' && (
-          <RiskAnalysisView
-            students={students}
-            onSelectStudent={setSelectedStudent}
-            onOpenInterventionModal={(student) => setSelectedStudent(student)}
-          />
-        )}
+          {currentTab === 'risk' && (
+            <RiskAnalysisView
+              students={students}
+              onSelectStudent={setSelectedStudent}
+              onOpenInterventionModal={(student) => setSelectedStudent(student)}
+            />
+          )}
 
-        {activeTab === 'segmentation' && (
-          <SegmentationView
-            students={students}
-            onSelectStudent={setSelectedStudent}
-            onLaunchGroupIntervention={handleLaunchGroupIntervention}
-          />
-        )}
+          {currentTab === 'segmentation' && (
+            <SegmentationView
+              students={students}
+              onSelectStudent={setSelectedStudent}
+              onLaunchGroupIntervention={handleLaunchGroupIntervention}
+            />
+          )}
 
-        {activeTab === 'placement' && (
-          <PlacementHubView
-            students={students}
-            onSelectStudent={setSelectedStudent}
-            onOpenInterventionModal={(student) => setSelectedStudent(student)}
-          />
-        )}
+          {currentTab === 'placement' && (
+            <PlacementHubView
+              students={students}
+              onSelectStudent={setSelectedStudent}
+              onOpenInterventionModal={(student) => setSelectedStudent(student)}
+            />
+          )}
 
-        {activeTab === 'interventions' && (
-          <InterventionsView
-            students={students}
-            onSelectStudent={setSelectedStudent}
-            onOpenNewInterventionModal={() => {
-              if (students.length > 0) setSelectedStudent(students[0]);
-            }}
-            onUpdateInterventionStatus={handleUpdateInterventionStatus}
-          />
-        )}
+          {currentTab === 'interventions' && (
+            <InterventionsView
+              students={students}
+              onSelectStudent={setSelectedStudent}
+              onOpenNewInterventionModal={() => {
+                if (students.length > 0) setSelectedStudent(students[0]);
+              }}
+              onUpdateInterventionStatus={handleUpdateInterventionStatus}
+            />
+          )}
 
-        {activeTab === 'copilot' && (
-          <CopilotView
-            students={students}
-            onSelectStudent={setSelectedStudent}
-            onOpenExportReport={() => setIsExportReportOpen(true)}
-          />
-        )}
+          {currentTab === 'copilot' && (
+            <CopilotView
+              students={students}
+              onSelectStudent={setSelectedStudent}
+              onOpenExportReport={() => setIsExportReportOpen(true)}
+            />
+          )}
 
-      </main>
+          {currentTab === 'reports' && (
+            <ReportsView
+              students={students}
+              onOpenExportModal={() => setIsExportReportOpen(true)}
+            />
+          )}
 
-      {/* Footer */}
-      <footer className={`border-t py-4 text-center text-xs transition-colors ${
-        isDarkMode ? 'border-slate-800/80 bg-slate-950/80 text-slate-400' : 'border-slate-200 bg-white/80 text-slate-500'
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p>
-            CampusCare AI &middot; Institutional Academic Success & Early Warning System
-          </p>
-          <p className="text-[11px] opacity-80">
-            Compliant with University Statutory Attendance Regulations &middot; Fall 2026 Term
-          </p>
-        </div>
-      </footer>
+          {currentTab === 'settings' && (
+            <SettingsView
+              onResetData={() => setShowResetConfirmModal(true)}
+            />
+          )}
+
+        </main>
+
+        {/* Global Footer */}
+        <footer className="border-t border-slate-200/80 bg-white/70 backdrop-blur-md py-4 text-xs text-slate-500">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+            <div className="flex items-center gap-2 justify-center">
+              <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+              <span className="font-semibold text-slate-700">CampusCare AI</span>
+              <span>&middot;</span>
+              <span>AI-Powered Student Analytics and Success Platform</span>
+            </div>
+            <div className="flex items-center gap-4 text-[11px] text-slate-400">
+              <span>Fall 2026 Academic Term</span>
+              <span>&bull;</span>
+              <span>Benchmark Attendance Target: 75%</span>
+            </div>
+          </div>
+        </footer>
+
+      </div>
 
       {/* Deep-Dive Student Profile Modal */}
       {selectedStudent && (
@@ -333,11 +421,40 @@ export default function App() {
         />
       )}
 
-      {/* Toast Notification Notification */}
+      {/* In-App Reset Confirmation Modal */}
+      {showResetConfirmModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-2xl p-6 border border-slate-200 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto mb-4">
+              <RefreshCw className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-center text-slate-900">Reset Cohort Data to Default?</h3>
+            <p className="text-xs text-center text-slate-500 mt-2 leading-relaxed">
+              This will restore all student records, risk scores, attendance logs, and mock benchmark datasets to their verified institutional starting state.
+            </p>
+            <div className="flex items-center justify-center gap-3 mt-6">
+              <button
+                onClick={() => setShowResetConfirmModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetDataConfirmed}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md transition-colors cursor-pointer"
+              >
+                Confirm Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 text-xs border border-slate-700 animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs border border-slate-800 animate-in fade-in slide-in-from-bottom-5 duration-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
+          <span className="font-medium">{toastMessage}</span>
         </div>
       )}
 
